@@ -1,0 +1,12 @@
+query-2: Tiempo medio transcurrido entre que se realiza un pedido (orderdate) y se envía el pedido (shippeddate) agrupado por tipo de producto (“productline”).
+   productline    | count  
+------------------+--------
+ Trains           |  47472
+ Ships            | 142416
+ Trucks and Buses | 174064
+ Planes           | 189888
+ Motorcycles      | 205712
+ Vintage Cars     | 379776
+ Classic Cars     | 601312
+(7 rows)
+

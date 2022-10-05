@@ -1,0 +1,10 @@
+query5: Países que tienen al menos una oficina que no ha vendido nada durante el año 2003
+  country  | count 
+-----------+-------
+ USA       |     3
+ Australia |     1
+ France    |     1
+ Japan     |     1
+ UK        |     1
+(5 rows)
+
