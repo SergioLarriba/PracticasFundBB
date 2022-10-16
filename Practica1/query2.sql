@@ -1,8 +1,9 @@
+-- x es la tabla que contiene la diferencia de cada pedido de shipeddate - orderdate
+with x as (select (ord.shippeddate-ord.orderdate) as time from orders ord)
 
-
-Select p.productline, count(x.time) 
-FROM (select(ord.shippeddate-ord.orderdate) as time FROM orders as ord)as x,products as p, orders as ord
- 
-WHERE time=ord.shippeddate-ord.orderdate
-Group by p.productline
-order by count(x.time)
+select 
+	pr.productline, count(x.time)
+from 
+	products pr, x
+group by pr.productline
+order by count(x.time) desc
