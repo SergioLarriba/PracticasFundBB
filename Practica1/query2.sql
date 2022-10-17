@@ -1,9 +1,9 @@
--- x es la tabla que contiene la diferencia de cada pedido de shipeddate - orderdate
-with x as (select (ord.shippeddate-ord.orderdate) as time from orders ord)
-
 select 
-	pr.productline, count(x.time)
+	p.productline, Avg(o.shippeddate - o.orderdate) as dif 
 from 
-	products pr, x
-group by pr.productline
-order by count(x.time) desc
+	orders o join orderdetails orderdi on o.ordernumber=orderdi.ordernumber
+	join products p on p.productcode=orderdi.productcode 
+group by 
+	p.productline
+order by 
+	dif desc
