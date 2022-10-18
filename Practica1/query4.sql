@@ -6,4 +6,4 @@ from
 	join employees e natural join offices o on c.salesrepemployeenumber=e.employeenumber 
 group by 
 	o.officecode
-order by sum(orderdi.quantityordered) desc
+order by sum(orderdi.quantityordered) desc limit 1
