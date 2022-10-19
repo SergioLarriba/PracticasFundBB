@@ -1,0 +1,9 @@
+La practica se va a centrar en el funcionamiento del programa que usaremos
+para acceder y conectar con la base de datos. Como ya hemos practicado sentencias
+y programación en C todas esas partes van a ser bastantes sencillas y esta practica 
+se va acentrar en matrices, matrices que le llegan al programa que vamos usar.
+Vamos a usar una librería ODBC que se basará en las primitivas para hablar con el programa 
+usaremos las siguentes funciones: connect, disconnect, execute. Estos odbcs
+lo bueno que tiene esq si cambias de base, con alguna actualización de odbc servirá para funcionar de nuevo
+perfectamente con la nueva base. 
+Nos dan un zip en el que hay un menú basico en c como modelo con su makefile
