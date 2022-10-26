@@ -1,17 +1,21 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+#include <sql.h>
+#include <sqlext.h>
+#include "odbc.h"
 
 
 static int ShowMainMenu();
 static void ShowCustomersMenu();
 static void ShowOrdersMenu();
-static void ShowProductMenu();
+static int ShowProductMenu();
 static int ShowProductSubMenu();
 static int ShowCustomersSubMenu();
 static int ShowOrdersSubMenu();
-
-
-
+int connect_handle(SQLHENV env,SQLHDBC dbc,SQLHSTMT stmt);
+int disconnect_handle(SQLHENV env, SQLHDBC dbc, SQLHSTMT stmt);
+int StockMenu();
 
 int main(void){
     int choice=0;
@@ -20,7 +24,9 @@ int main(void){
         choice=ShowMainMenu();
         switch(choice){
             case 1: {
-                ShowProductMenu();
+                if(ShowProductMenu()==0){
+                    return 0;
+                }
             }
                 break;
             case 2:{
@@ -72,16 +78,22 @@ int ShowMainMenu() {
 
     return number;
 }
-void ShowProductMenu() {
+int ShowProductMenu() {
     int number= 0;
-    do {
+    int ret;
+    
+    do{
         number=ShowProductSubMenu();
         switch (number) {
 
             case 1: {
-                /*StockMenu();*/
+                ret=StockMenu();
+                if(!ret){
+                    return 0;
+                }
+                return 0;
             }
-                break;
+                
 
             case 2: {
                 /*FindMenu();*/
@@ -95,14 +107,74 @@ void ShowProductMenu() {
 
         }
     } while (number!= 3);
+    return 0;
+}
+int StockMenu(){
+    SQLHENV env=NULL;
+    SQLHDBC dbc=NULL;
+    SQLHSTMT stmt=NULL;
+    #define Buffer 512
+    char x[Buffer]="\0";
+    char quantityinstock[Buffer]="\0";
+    SQLRETURN ret2;
+    int ret;
+
+    ret = odbc_connect(&env, &dbc);
+    if (!SQL_SUCCEEDED(ret)) {
+        return EXIT_FAILURE;
+    }
+
+    /* Allocate a statement handle */
+    ret = SQLAllocHandle(SQL_HANDLE_STMT, dbc, &stmt);
+    ret= SQLPrepare(stmt, (SQLCHAR*) "SELECT quantityinstock FROM products WHERE productcode = ?", SQL_NTS);
+    if (!SQL_SUCCEEDED(ret)) {
+        odbc_extract_error("", stmt, SQL_HANDLE_ENV);
+        return ret;
+    }
+        
+    
+    
+   
+    printf("productcode = ");
+    (void) fflush(stdout);
+    scanf("%s", x);
+    
+    (void) SQLBindParameter(stmt,1,SQL_PARAM_INPUT, SQL_C_CHAR,
+                                    SQL_CHAR,0,0,x,0,NULL);
+    (void) SQLExecute(stmt);
+    (void) SQLBindCol(stmt, 1, SQL_C_CHAR,(SQLCHAR *)quantityinstock,Buffer/*longitud de dato y*/, NULL);
+    
+    while (SQL_SUCCEEDED(ret=SQLFetch (stmt))){
+        printf("Unidades en stock: %s\n", quantityinstock);
+    }
+
+    (void) SQLCloseCursor(stmt);
+
+        /*volver a pedir*/
+    (void) fflush(stdout);
+    
+    printf("\n");
+
+    ret2 = SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+    if (!SQL_SUCCEEDED(ret2)) {
+        odbc_extract_error("", stmt, SQL_HANDLE_STMT);
+        return ret;
+    }
+
+    /* DISCONNECT */
+    ret = odbc_disconnect(env, dbc);
+    if (!SQL_SUCCEEDED(ret)) {
+        return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
 
 }
 int ShowProductSubMenu() {
     int number = 0;
     char buf[16];
 
-    do {
-
+    
+    do{
         printf(" (1) Stock\n"
                " (2) Find\n"
                " (3) Back\n"
@@ -232,3 +304,42 @@ void ShowOrdersMenu() {
     } while (number != 4);
 
 }
+/*int connect_handle(SQLHENV env,SQLHDBC dbc,SQLHSTMT stmt){
+
+    int ret;
+
+     
+    ret= odbc_connect(&env,&dbc);
+    if (!SQL_SUCCEEDED(ret)){
+        printf("Error en la conexion");
+        return EXIT_FAILURE;
+    }
+
+    
+    ret=SQLAllocHandle(SQL_HANDLE_STMT, dbc, &stmt);
+    if (!SQL_SUCCEEDED(ret)){
+        odbc_extract_error("",stmt,SQL_HANDLE_ENV);
+        return ret;
+    }
+    return EXIT_SUCCESS;
+}
+int disconnect_handle(SQLHENV env, SQLHDBC dbc, SQLHSTMT stmt){
+
+    int ret2,ret;
+
+    
+    ret2 = SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+    if (!SQL_SUCCEEDED(ret2)) {
+        odbc_extract_error("", stmt, SQL_HANDLE_STMT);
+        return ret2;
+    }
+
+    
+    ret = odbc_disconnect(env, dbc);
+    if (!SQL_SUCCEEDED(ret)) {
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
+}*/
+
