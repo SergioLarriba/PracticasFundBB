@@ -447,15 +447,13 @@ int RangeMenu()
  - La salida de las lineas donde se listen los productos se ordenara por orderlinenumber 
  
     SELECT 
-        orders.orderdate, orders.status, orderdetails.productcode,  orderdetails.quantityordered, orderdetails.priceeach, sum(payments.amount) as total, orderdetails.orderlinenumber
+        orders.orderdate, orders.status, orderdetails.productcode,  orderdetails.quantityordered, orderdetails.priceeach, sum(orderdetails.priceeach * orderdetails.quantityordered) as total, orderdetails.orderlinenumber
     FROM 
-        orderdetails natural join orders natural join customers natural join payments
+            orders natural join orderdetails natural join products
     WHERE 
-        orders.ordernumber='10100'
+            orders.ordernumber='10100'
     group by orders.orderdate, orders.status, orderdetails.productcode, orderdetails.quantityordered, orderdetails.priceeach, orderdetails.orderlinenumber
     order by(orderdetails.orderlinenumber)
-    
-Va todo perfecto, pero no me suma bien
     */
 int DetailMenu()
 {
@@ -496,7 +494,7 @@ int DetailMenu()
         ordernumber[strlen(ordernumber)-1]='\0'; 
         
         /* snprintf is not defined if ansi flag is enabled */
-        (void) snprintf(query, (size_t)(BufferLength + 624), "SELECT orders.orderdate, orders.status, orderdetails.productcode,  orderdetails.quantityordered, orderdetails.priceeach, sum(payments.amount) as total, orderdetails.orderlinenumber FROM orderdetails natural join orders natural join customers natural join payments WHERE orders.ordernumber='%s' group by orders.orderdate, orders.status, orderdetails.productcode, orderdetails.quantityordered, orderdetails.priceeach, orderdetails.orderlinenumber order by(orderdetails.orderlinenumber)", ordernumber);
+        (void) snprintf(query, (size_t)(BufferLength + 624), "SELECT orders.orderdate, orders.status, orderdetails.productcode,  orderdetails.quantityordered, orderdetails.priceeach, sum(orderdetails.priceeach * orderdetails.quantityordered) as total, orderdetails.orderlinenumber FROM orders natural join orderdetails natural join products WHERE orders.ordernumber='%s' group by orders.orderdate, orders.status, orderdetails.productcode, orderdetails.quantityordered, orderdetails.priceeach, orderdetails.orderlinenumber order by(orderdetails.orderlinenumber)", ordernumber);
 
         (void) SQLExecDirect(stmt, (SQLCHAR*) query, SQL_NTS);
 
@@ -508,12 +506,15 @@ int DetailMenu()
         (void) SQLBindCol(stmt, 6, SQL_C_CHAR, (SQLCHAR*) total, BufferLength , NULL);
         (void) SQLBindCol(stmt, 7, SQL_C_CHAR, (SQLCHAR*) orderlinenumber, BufferLength , NULL);
 
+        if (SQL_SUCCEEDED(ret = SQLFetch(stmt))) {
+            printf("Orderdate = %s | Status = %s\n", orderdate, status);
+            printf("Total del pedido = %s\n\n", total); 
+            printf("Productcode = %s | Quantityordered = %s | Priceeach = %s\n", productcode, quantityordered, priceeach); 
+        }
+
         /* Loop through the rows in the result-set */
         while (SQL_SUCCEEDED(ret = SQLFetch(stmt))) {
-            printf("Orderdate = %s | Status = %s\n", orderdate, status);
-            printf("Total del pedido = %s\n", total); 
             printf("Productcode = %s | Quantityordered = %s | Priceeach = %s\n", productcode, quantityordered, priceeach); 
-            printf ("\n"); 
         }
 
         ret2 = SQLCloseCursor(stmt);
@@ -521,6 +522,7 @@ int DetailMenu()
             odbc_extract_error("", stmt, SQL_HANDLE_STMT);
             return ret;
         }
+        printf ("\n"); 
         printf("Ordernumber = ");
         ret = fflush(stdout);
     }
