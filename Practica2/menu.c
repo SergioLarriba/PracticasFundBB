@@ -129,7 +129,6 @@ int ShowProductSubMenu() {
             
             number =0;
         else
-            
             number = atoi(buf);
         printf("\n");
 
@@ -163,7 +162,7 @@ int StockMenu(){
         return ret;
     }
    
-    printf("productcode = ");
+    printf("Enter productcode > ");
     (void) fflush(stdout);
     if(fgets(x, Buferlen, stdin)){
         x[strcspn(x, "\n")]= '\0';
@@ -175,7 +174,7 @@ int StockMenu(){
     (void) SQLBindCol(stmt, 1, SQL_C_CHAR,(SQLCHAR *)quantityinstock,Buferlen, NULL);
     
     while (SQL_SUCCEEDED(ret=SQLFetch (stmt))){
-        printf("Unidades en stock: %s\n", quantityinstock);
+        printf("%s\n", quantityinstock);
     }
 
     (void) SQLCloseCursor(stmt);
@@ -195,11 +194,10 @@ int FindMenu(){
     SQLHENV env=NULL;
     SQLHDBC dbc=NULL;
     SQLHSTMT stmt=NULL;
-    
+    #define Buferlen 512
     char x[Buferlen]="\0";
     char productcode[Buferlen]="\0";
-    char cadena[Buferlen]="\0";
-    
+    char cadena[Buferlen]="%";
     /*SQLRETURN ret2;*/
     int ret;
 
@@ -207,6 +205,8 @@ int FindMenu(){
     if (!SQL_SUCCEEDED(ret)) {
         return EXIT_FAILURE;
     }
+    /**/
+    /* Allocate a statement handle */
     
     ret = SQLAllocHandle(SQL_HANDLE_STMT, dbc, &stmt);
     ret= SQLPrepare(stmt, (SQLCHAR*) "SELECT productcode FROM products WHERE productname like ? ORDER BY productcode", SQL_NTS);
@@ -217,31 +217,28 @@ int FindMenu(){
     
     printf("Enter productname > ");
     (void) fflush(stdout);
-    if(fgets(x, strlen(x), stdin)){
-        cadena[0]="%";
-        strcat(cadena,x);
-        strcat(x,cadena);
+    if(fgets(x, Buferlen, stdin)){
+        x[strcspn(x, "\n")]= '\0';
     }
-    
+        
+    strcat(cadena,x);
+    strcat(cadena,"%");
+
     printf("\n");
     (void) SQLBindParameter(stmt,1,SQL_PARAM_INPUT, SQL_C_CHAR,
-                                    SQL_CHAR,0,0,x,0,NULL);
+                                    SQL_CHAR,0,0,cadena,0,NULL);
     (void) SQLExecute(stmt);
     (void) SQLBindCol(stmt, 1, SQL_C_CHAR,(SQLCHAR *)productcode,Buferlen/*longitud de dato y*/, NULL);
     
     while (SQL_SUCCEEDED(ret=SQLFetch (stmt))){
         
-        printf("Product code: %s || Product name: %s\n", productcode, x);
+        printf("%s %s\n", productcode, x);
         printf("\n");
     }
 
     (void) SQLCloseCursor(stmt);
-
-        /*volver a pedir*/
     (void) fflush(stdout);
     
-    printf("\n");
-
     ret=disconnect_handle(env, dbc, stmt);
     if (!SQL_SUCCEEDED(ret)) {
         odbc_extract_error("", stmt, SQL_HANDLE_ENV);
@@ -336,9 +333,9 @@ int OpenMenu ()
 
     (void) SQLExecute(stmt);
     (void) SQLBindCol(stmt, 1, SQL_C_CHAR,(SQLCHAR *)ordernumber,Buffer/*longitud de dato y*/, NULL);
-    printf ("Pedidos que todavia no se han enviado:\n"); 
+    
     while (SQL_SUCCEEDED(ret=SQLFetch (stmt))){
-        printf("- %s\n", ordernumber);
+        printf("%s\n", ordernumber);
     }
 
     (void) SQLCloseCursor(stmt);
@@ -391,19 +388,19 @@ int RangeMenu()
         return ret;
     }
 
-    ret= SQLPrepare(stmt, (SQLCHAR*) "SELECT ordernumber, orderdate, shippeddate FROM orders WHERE orderdate>= ? and orderdate<= ? order by(orderdate);", SQL_NTS);
+    ret= SQLPrepare(stmt, (SQLCHAR*) "SELECT ordernumber, orderdate, shippeddate FROM orders WHERE orderdate>= ? and orderdate<= ? order by(ordernumber);", SQL_NTS);
 
-    printf("Introduzca la fecha minima y maxima(YYYY-MM-DD-YYYY-MM-DD) = ");
+    printf("Enter dates (YYYY-MM-DD - YYYY-MM-DD) > ");
     (void) fflush(stdout);
     if(fgets(fecha, Buferlen, stdin)){
         fecha[strcspn(fecha, "\n")]= '\0';
-    }
+    } 
        
     /* Separo las 2 fechas en 2 variables */
     for (i=0; i<=9; i++) {
         fecha_minima[i]=fecha[i]; 
     }
-    for (i=0, j=11; i<=10; i++, j++) {
+    for (i=0, j=13; i<=9; i++, j++) {
         fecha_maxima[i]=fecha[j]; 
     }
 
@@ -420,7 +417,7 @@ int RangeMenu()
 
     /* Loop through the rows in the result-set */
     while (SQL_SUCCEEDED(ret = SQLFetch(stmt))) {
-        printf("%s | %s | %s\n", ordernumber, orderdate, shippeddate);
+        printf("%s %s %s\n", ordernumber, orderdate, shippeddate);
     }
 
     ret2 = SQLCloseCursor(stmt);
@@ -479,7 +476,7 @@ int DetailMenu()
         odbc_extract_error("", stmt, SQL_HANDLE_ENV);
         return ret;
     }
-    printf ("Enter productnumber > "); 
+    printf ("Enter ordernumber > "); 
     (void)fflush(stdout); 
     if(fgets(ordernumber, Buferlen, stdin)){
         ordernumber[strcspn(ordernumber, "\n")]= '\0';
@@ -609,6 +606,7 @@ int FindMenu2(){
     char contactfirstname[Buferlen]="\0";
     char contactlastname[Buferlen]="\0";
     char customernumber[Buferlen]="\0";
+    char cadena[Buferlen]="%%%"; 
     /*SQLRETURN ret2;*/
     int ret;
 
@@ -618,22 +616,27 @@ int FindMenu2(){
     }
     
     ret = SQLAllocHandle(SQL_HANDLE_STMT, dbc, &stmt);
-    ret= SQLPrepare(stmt, (SQLCHAR*) "SELECT customername, contactfirstname, contactlastname, customernumber FROM customers WHERE ? in (contactlastname, contactfirstname) ORDER BY customernumber", SQL_NTS);
+    ret= SQLPrepare(stmt, (SQLCHAR*) "SELECT customernumber, customername, contactfirstname, contactlastname FROM customers WHERE contactfirstname like ? or contactlastname like ? ORDER BY customernumber", SQL_NTS);
     if (!SQL_SUCCEEDED(ret)) {
         odbc_extract_error("", stmt, SQL_HANDLE_ENV);
         return ret;
     }
         
-    printf("contact name = ");
+    printf("Enter customer name > ");
     (void) fflush(stdout);
     if(fgets(x, Buferlen, stdin)){
         x[strcspn(x, "\n")]= '\0';
     }
 
+    strcat(cadena, x); 
+    strcat(cadena, "%%"); 
+
     printf("\n");
 
     (void) SQLBindParameter(stmt,1,SQL_PARAM_INPUT, SQL_C_CHAR,
-                                    SQL_CHAR,0,0,x,0,NULL);
+                                    SQL_CHAR,0,0,cadena,0,NULL);
+    (void) SQLBindParameter(stmt,2,SQL_PARAM_INPUT, SQL_C_CHAR,
+                                    SQL_CHAR,0,0,cadena,0,NULL);
     (void) SQLExecute(stmt);    
         
     (void) SQLBindCol(stmt, 1, SQL_C_CHAR,(SQLCHAR *)customername,Buferlen, NULL);
@@ -644,7 +647,7 @@ int FindMenu2(){
 
 
     while (SQL_SUCCEEDED(ret=SQLFetch (stmt))){
-        printf("Customer name: %s || First name: %s || Last name: %s || Customer number: %s", customername ,contactfirstname, contactlastname, customernumber);
+        printf("%s %s %s %s", customername ,contactfirstname, contactlastname, customernumber);
         printf("\n");
     }
     
@@ -735,7 +738,7 @@ int ListProductsMenu(){
     
     /* Allocate a statement handle */
     ret = SQLAllocHandle(SQL_HANDLE_STMT, dbc, &stmt);
-    ret= SQLPrepare(stmt, (SQLCHAR*) "SELECT orders.ordernumber, sum(orderdetails.quantityordered) as total FROM customers as c natural join orders natural join orderdetails natural join products as p WHERE c.customernumber = ? GROUP BY orders.ordernumber", SQL_NTS);
+    ret= SQLPrepare(stmt, (SQLCHAR*) "SELECT p.productname, sum(od.quantityordered) FROM products p join orderdetails od on od.productcode=p.productcode join orders o on ", SQL_NTS);
     if (!SQL_SUCCEEDED(ret)) {
         odbc_extract_error("", stmt, SQL_HANDLE_ENV);
         return ret;
