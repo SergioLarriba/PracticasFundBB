@@ -738,7 +738,7 @@ int ListProductsMenu(){
     
     /* Allocate a statement handle */
     ret = SQLAllocHandle(SQL_HANDLE_STMT, dbc, &stmt);
-    ret= SQLPrepare(stmt, (SQLCHAR*) "SELECT p.productname, sum(od.quantityordered) FROM products p join orderdetails od on od.productcode=p.productcode join orders o on ", SQL_NTS);
+    ret= SQLPrepare(stmt, (SQLCHAR*) "SELECT p.productname, sum(od.quantityordered) FROM products p join orderdetails od on od.productcode=p.productcode join orders o on od.ordernumber=o.ordernumber join customers c on c.customernumber=o.customernumber where c.customernumber=? group by p.productname, p.productcode order by p.productcode ", SQL_NTS);
     if (!SQL_SUCCEEDED(ret)) {
         odbc_extract_error("", stmt, SQL_HANDLE_ENV);
         return ret;
