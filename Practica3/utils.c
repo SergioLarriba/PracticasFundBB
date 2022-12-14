@@ -1,29 +1,31 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <assert.h>
 #include <string.h>
+
 #include "utils.h"
 
 int no_deleted_registers = NO_DELETED_REGISTERS;
 
-void replaceExtensionByIdx(const char *fileName, char * indexName) {
-    size_t i;
-    
-    assert(fileName!=NULL); 
-    assert(indexName!=NULL); 
+void replaceExtensionByIdx(const char *fileName, char * indexName) 
+{
+    int i, tam;
 
-    for (i=0; i<strlen(fileName) && fileName[i]!='.'; i++) {
+    if (fileName == NULL || indexName == NULL) 
+        return; 
+    
+    tam = strlen(fileName); 
+
+    for (i=0; i<tam && fileName[i]!='.'; i++) {
         indexName[i] = fileName[i]; 
     } 
-    indexName[i+1]='i'; 
-    indexName[i+2]='d'; 
-    indexName[i+3]='x'; 
+    strcat (indexName, ".idx"); 
 
     return;
 }
 
 
-bool createTable(const char * tableName) {
+bool createTable(const char * tableName) 
+{
     FILE *f=NULL; 
     char *indexName=NULL; 
 
@@ -34,7 +36,7 @@ bool createTable(const char * tableName) {
     {
         f = fopen(tableName, "wb+"); 
         if (f == NULL) 
-            return EXIT_FAILURE; 
+            return false; 
         
         /* Escribo -1, que indica que no hay ningun fichero borrado */
         fwrite(&no_deleted_registers, sizeof(int), 1, f); 
@@ -42,19 +44,21 @@ bool createTable(const char * tableName) {
     /* Reservo memoria para el nombre del indice */
     indexName = (char*) malloc (strlen(tableName) * sizeof(indexName[0])); 
     if (indexName == NULL) 
-        return EXIT_FAILURE;       
+        return false;       
     
     /* Cambio el nombre a .idx */
     replaceExtensionByIdx (tableName, indexName); 
-    if (createIndex (indexName) == EXIT_FAILURE)
-        return EXIT_FAILURE;
+    if (createIndex (indexName) == false)
+        return false;
     
     free(indexName); 
+    fclose (f); 
 
-    return EXIT_SUCCESS; 
+    return true;
 }
 
-bool createIndex(const char *indexName) {
+bool createIndex(const char *indexName) 
+{
     FILE *f=NULL; 
 
     /* Abro el fichero de indices */
@@ -64,7 +68,7 @@ bool createIndex(const char *indexName) {
     {
         f = fopen(indexName, "wb+"); 
         if (f == NULL)
-            return EXIT_FAILURE; 
+            return false; 
 
         /* Asigno -1 a los 2 primeros punteros iniciales */
         fwrite(&no_deleted_registers, sizeof(int), 1, f); 
@@ -72,68 +76,114 @@ bool createIndex(const char *indexName) {
     }
 
     fclose (f); 
-
-    return EXIT_SUCCESS;
+    return true;
 }
 
-void printnode(size_t _level, size_t level, FILE * indexFileHandler, int node_id, char side) 
+void printnode(size_t _level, size_t level, FILE * indexFileHandler, int node_id, char side)
 {
-    Node node; 
-    size_t pos, i; 
+    Node node;
+    size_t pos, i;
 
-    /* Control de errores */
-    if (_level>level || node_id == -1 || indexFileHandler == NULL) 
+    if (node_id == -1 || indexFileHandler == NULL || _level>level)
         return; 
 
-    /* Para la funcion fseek -> fseek(fichero, desplazamiento, origen)
-        SEEK_SET: el desplazamiento se cuenta desde el principio del fichero 
-        SEEK_CUR: el desplazamiento se cuenta desde la posicion actual del cursor
-        SEEK_END: el desplazamiento se cuenta desde el final del fichero 
-    */
-    /* Calculo la posicion que ocupa el nodo en el fichero */
-    pos = INDEX_HEADER_SIZE + sizeof(node) * node_id;
-    if (fseek (indexFileHandler, pos, SEEK_CUR) != 0) 
-        return; 
-    /* Para la funcion fread (devuelve el numero de registros leidos) -> size_t fread(void *puntero, size_t tamaño, size_t nregistros, FILE *fichero)*/
-    fread (&node, sizeof(Node), 1, indexFileHandler); 
+    pos = INDEX_HEADER_SIZE + sizeof (node) * node_id;
 
-    /* Imprimo el nodo -> side(l) book_id(MAR0) id((5)): offset(4)*/
-    for (i=0; i<_level; i++)
-    {
-        printf ("   "); 
-        printf ("%c %s (%d): %d", side, node.book_id, node_id, node.offset); 
-    }
+    fseek(indexFileHandler, pos, SEEK_SET);
+    fread(&node, sizeof(Node), 1, indexFileHandler);
+   
+    for (i=0; i< _level; i++)
+        printf("\t");
+    
+    printf("%c %.4s (%d): %d\n", side, node.book_id, node_id, node.offset);
 
-    /* Imprimo sus hijos de manera recursiva, de tal forma que, en la funcion printTree solo sea necesario llamar a la funcion printNode */
-    _level++; 
+    _level++;
     printnode(_level, level, indexFileHandler, node.left, 'l');
     printnode(_level, level, indexFileHandler, node.right, 'r');
 
-    return;
+    return; 
 }
 
 void printTree(size_t level, const char * indexName)
 {
-    FILE *f=NULL; 
-    int raiz; 
+    int root;
+    FILE *f = NULL;
 
-    f = fopen(indexName, "rb+"); 
-
-    /* Veo donde esta la raiz: sera la que este en la posicion que indica el primer numero */
-    fread(&raiz, sizeof(int), 1, f); 
-    /* Si no hubiese raiz, return */
-    if (raiz == -1) 
+    if (indexName == NULL)
         return; 
+
+    f = fopen(indexName, "r");
     
-    printnode(0, level, f, raiz, ' '); 
-    return;
+    fread(&root, sizeof(int), 1, f);
+    if (root == -1)
+        return;
+    
+    printnode(0, level, f, root, ' ');
+
+    fclose (f); 
+
+    return; 
 }
 
-bool findKey(const char * book_id, const char *indexName,
-             int * nodeIDOrDataOffset)
- {
-     return true;
- }
+
+bool findKey(const char * book_id, const char *indexName, int * nodeIDOrDataOffset)
+{
+    FILE *f=NULL; 
+    Node node; 
+    int root=-1, cmp; 
+    size_t pos; 
+    bool condition=true; 
+    
+    if (book_id == NULL || indexName == NULL || nodeIDOrDataOffset == NULL)
+        return false; 
+
+    f = fopen (indexName, "rb+"); 
+    if (f == NULL)
+        return false; 
+    /* Leo y guardo la posicion del nodo raiz en root */
+    fread(&root, sizeof(int), 1, f); 
+    *nodeIDOrDataOffset = root; 
+
+    while (condition == true) /* M*/
+    {    
+        /* Busco el nodo que ocupa la posicion pos y lo guardo en node */
+        pos = INDEX_HEADER_SIZE + sizeof (Node) * (*nodeIDOrDataOffset); 
+        fseek (f, pos, SEEK_SET); 
+        fread (&node, sizeof(Node), 1, f); 
+
+        /* si los bytes son iguales, he encontrado la llave */
+        cmp = memcmp(book_id, node.book_id ,PK_SIZE); 
+        if (cmp == 0)
+        {
+            *nodeIDOrDataOffset = node.offset; 
+            fclose (f); 
+            return true; 
+        }
+        else if (cmp > 0) /* Quiere decir que el nodo que buscamos esta por la parte derecha, ya que es mayor que el actual */
+        {
+            if (node.right == -1) /* Si no existe el nodo derecho al actual, no hemos encontrado la llave */
+            {
+                fclose (f); 
+                return false; 
+            }
+            else 
+                *nodeIDOrDataOffset = node.right; 
+        }
+        else /* cmp <0 -> quiere decir que el nodo que buscamos esta a la izquierda, ya que es menor que el nodo actual */
+        {
+            if (node.left == -1) /* Si no existe el nodo izquierdo al actual, no hemos encontrado la llave */
+            {
+                fclose (f); 
+                return false; 
+            }
+            else 
+                *nodeIDOrDataOffset = node.left; 
+        }
+        condition = true; 
+    }
+
+    return true;
+}
 
 bool addIndexEntry(char * book_id,  int bookOffset, char const * indexName) {
     return true;
